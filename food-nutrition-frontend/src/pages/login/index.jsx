@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
 import WelcomeHeader from './components/WelcomeHeader';
@@ -6,13 +6,20 @@ import LoginForm from './components/LoginForm';
 
 const GlitterCanvas = () => {
   const canvasRef = useRef(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
     resize();
     window.addEventListener('resize', resize);
+
     const dots = Array.from({ length: 80 }, () => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
@@ -21,84 +28,223 @@ const GlitterCanvas = () => {
       phase: Math.random() * Math.PI * 2,
       color: Math.random() > 0.5 ? '#4ade80' : '#6ee7b7',
     }));
-    let animId; let t = 0;
+
+    let animId;
+    let t = 0;
+
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       t += 0.01;
+
       dots.forEach((dot) => {
-        const alpha = 0.3 + 0.7 * Math.abs(Math.sin(t * dot.speed * 60 + dot.phase));
-        ctx.save(); ctx.globalAlpha = alpha; ctx.fillStyle = dot.color;
-        ctx.shadowColor = dot.color; ctx.shadowBlur = 6;
-        ctx.beginPath(); ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        const alpha =
+          0.3 + 0.7 * Math.abs(Math.sin(t * dot.speed * 60 + dot.phase));
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = dot.color;
+        ctx.shadowColor = dot.color;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       });
+
       animId = requestAnimationFrame(draw);
     };
+
     draw();
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize); };
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
   }, []);
-  return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }} />;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    />
+  );
 };
 
 const NAVBAR_HEIGHT = 60;
 
 const Login = () => {
+  const [lampOn, setLampOn] = useState(false);
+
   return (
     <>
       <Helmet>
         <title>Sign In - FoodNutritionAI</title>
-        <meta name="description" content="Sign in to FoodNutritionAI" />
       </Helmet>
 
-      <div style={{ position: 'relative', minHeight: '100vh', width: '100%', overflow: 'hidden', background: 'linear-gradient(135deg, #0a1628 0%, #0d1f2d 40%, #0a1a1a 100%)' }}>
+      <div
+        style={{
+          position: 'relative',
+          minHeight: '100vh',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, #0a1628 0%, #0d1f2d 40%, #0a1a1a 100%)',
+        }}
+      >
         <GlitterCanvas />
-        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '50%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(74,222,128,0.06) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '50%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(110,231,183,0.05) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
-        {/* ── FIXED NAVBAR flush to very top ── */}
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0,
-          zIndex: 50,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 20px',
-          height: `${NAVBAR_HEIGHT}px`,
-          background: '#0d1f2d',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M12 3.5C12 3.5 12.5 2 14 2C14 3.5 12.8 4.2 12 3.5Z" fill="white" opacity="0.9"/>
-                <path d="M8.5 6C6.5 6 4 8 4 11.5C4 15.5 6.5 20 8.5 20C9.5 20 10 19.5 12 19.5C14 19.5 14.5 20 15.5 20C17.5 20 20 15.5 20 11.5C20 8 17.5 6 15.5 6C14.5 6 13.5 6.5 12 6.5C10.5 6.5 9.5 6 8.5 6Z" fill="white"/>
-                <circle cx="9.5" cy="10.5" r="1.2" fill="rgba(22,163,74,0.5)"/>
-              </svg>
-            </div>
-            <span style={{ color: 'white', fontWeight: 700, fontSize: '16px', letterSpacing: '-0.3px' }}>FoodNutritionAI</span>
-          </div>
+        {/* LIGHT GLOW */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '20%',
+            width: '320px',
+            height: '320px',
+            background: lampOn
+              ? 'radial-gradient(circle, rgba(74,222,128,0.25), transparent 70%)'
+              : 'transparent',
+            filter: 'blur(40px)',
+            transition: '0.6s',
+            pointerEvents: 'none',
+            zIndex: 5,
+          }}
+        />
+
+     {/* HANGING LAMP */}
+{!lampOn && (
+  <motion.div
+    drag="y"
+    dragConstraints={{ top: 0, bottom: 160 }}
+    onDragEnd={(e, info) => {
+      if (info.point.y > 200) setLampOn(true);
+    }}
+    style={{
+      position: 'absolute',
+      top: 0,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 30,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      cursor: 'grab',
+    }}
+  >
+    {/* Rope */}
+    <div
+      style={{
+        width: '4px',
+        height: '140px',
+        background: 'linear-gradient(to bottom,#94a3b8,#64748b)',
+      }}
+    />
+
+    {/* Lamp holder */}
+    <div
+      style={{
+        width: '26px',
+        height: '18px',
+        background: '#334155',
+        borderRadius: '6px 6px 0 0',
+      }}
+    />
+
+    {/* Lamp head */}
+    <div
+      style={{
+        width: '90px',
+        height: '55px',
+        background: 'linear-gradient(#22c55e,#166534)',
+        borderRadius: '50px 50px 18px 18px',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.6)',
+        position: 'relative',
+      }}
+    />
+
+    {/* LIGHT CONE */}
+    <div
+      style={{
+        width: '260px',
+        height: '260px',
+        marginTop: '-20px',
+        background:
+          'radial-gradient(circle at top, rgba(74,222,128,0.35), transparent 70%)',
+        filter: 'blur(30px)',
+        pointerEvents: 'none',
+      }}
+    />
+  </motion.div>
+)}
+
+        {/* NAVBAR */}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 20px',
+            height: `${NAVBAR_HEIGHT}px`,
+            background: '#0d1f2d',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <span style={{ color: 'white', fontWeight: 700 }}>
+            FoodNutritionAI
+          </span>
         </div>
 
-        {/* Content pushed down by navbar height */}
-        <div style={{ position: 'relative', zIndex: 10, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', paddingTop: `${NAVBAR_HEIGHT + 16}px` }}>
+        {/* LOGIN CARD */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 10,
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: `${NAVBAR_HEIGHT + 16}px`,
+          }}
+        >
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 60, scale: 0.9 }}
+            animate={
+              lampOn
+                ? { opacity: 1, y: 0, scale: 1 }
+                : { opacity: 0, y: 60, scale: 0.9 }
+            }
+            transition={{ duration: 0.8 }}
             style={{ width: '100%', maxWidth: '520px' }}
           >
             <div
-              className="hover:-translate-y-1 transition-all duration-500 ease-out"
-              style={{ backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderRadius: '3rem', padding: 'clamp(32px, 5vw, 56px)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+              style={{
+                backdropFilter: 'blur(24px)',
+                borderRadius: '3rem',
+                padding: 'clamp(32px, 5vw, 56px)',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              }}
             >
               <WelcomeHeader />
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.6 }} className="mt-10">
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={lampOn ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: 0.4 }}
+                className="mt-10"
+              >
                 <LoginForm />
               </motion.div>
-            </div>
-            <div className="text-center mt-10">
-              <p className="text-sm font-medium tracking-tight" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                &copy; {new Date()?.getFullYear()} FoodNutritionAI. Protected by enterprise-grade encryption.
-              </p>
             </div>
           </motion.div>
         </div>
