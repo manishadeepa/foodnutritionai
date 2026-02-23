@@ -204,7 +204,8 @@ const NutritionHistory = () => {
         </button>
 
         {/* ── CHANGED: removed max-w-7xl, now full width with equal small padding on both sides ── */}
-        <div style={{ padding: '1.5rem 4%', position:'relative', zIndex:1 }}>
+        {/* ── ONLY CHANGE: paddingTop reduced from 1.5rem → 0.25rem to move heading up ── */}
+        <div style={{ padding: '0.25rem 4% 1.5rem', position:'relative', zIndex:1 }}>
 
           <div className="mb-6 md:mb-8 text-center">
             <h1 style={{

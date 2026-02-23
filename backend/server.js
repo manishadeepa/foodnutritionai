@@ -10,10 +10,11 @@ app.use(express.json());
 
 // DB connection
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "Divya123",
-  database: "nutriscan"
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT || 3306
 });
 
 db.connect(err => {
@@ -69,7 +70,7 @@ app.post("/api/history", (req, res) => {
 });
 
 
-// ✅ GET HISTORY — only for the logged in user
+// ✅ GET HISTORY
 app.get("/api/history/:userId", (req, res) => {
   const sql = `SELECT * FROM food_history WHERE user_id = ? ORDER BY created_at DESC`;
   db.query(sql, [req.params.userId], (err, results) => {
@@ -79,7 +80,7 @@ app.get("/api/history/:userId", (req, res) => {
 });
 
 
-// ✅ DELETE HISTORY ITEM — only owner can delete
+// ✅ DELETE HISTORY ITEM
 app.delete("/api/history/:id", (req, res) => {
   const { user_id } = req.query;
   db.query("DELETE FROM food_history WHERE id = ? AND user_id = ?", [req.params.id, user_id], (err) => {
@@ -138,14 +139,14 @@ If the food conflicts with their dietary preferences, clearly mention it.
 If asked for a diet plan, give a simple structured plan.
 Keep responses concise and helpful.`;
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "nvidia/nemotron-nano-12b-v2-vl:free",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: message }
@@ -154,7 +155,7 @@ Keep responses concise and helpful.`;
     });
 
     const json = await response.json();
-    if (!response.ok) throw new Error(json.error?.message || "OpenRouter error");
+    if (!response.ok) throw new Error(json.error?.message || "Groq error");
 
     const reply = json.choices[0].message.content.trim();
     console.log("✅ Chat reply sent");
@@ -232,7 +233,7 @@ app.post("/forgot-password", (req, res) => {
 
 
 // ====================================================
-// ✅ AI ANALYZE API — using OpenRouter (free models)
+// ✅ AI ANALYZE API — using Groq (free, no limits)
 // ====================================================
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -244,13 +245,12 @@ app.post("/api/analyze", upload.single("image"), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: "No image uploaded." });
 
     const base64Image = req.file.buffer.toString("base64");
-    const mediaType   = req.file.mimetype;
+    const mediaType = req.file.mimetype;
 
     let dietContext = '';
     try {
       const userPreferences = req.body.preferences ? JSON.parse(req.body.preferences) : null;
       const customRestrictions = req.body.custom_restrictions || '';
-
       if (userPreferences) {
         const activePrefs = Object.entries(userPreferences)
           .filter(([_, v]) => v === true)
@@ -262,34 +262,10 @@ app.post("/api/analyze", upload.single("image"), async (req, res) => {
       if (customRestrictions) {
         dietContext += `Additional dietary restrictions: ${customRestrictions}. `;
       }
-      if (dietContext) {
-        console.log("🥗 Diet context:", dietContext);
-      }
-    } catch (e) {
-      console.log("No preferences provided");
-    }
+      if (dietContext) console.log("🥗 Diet context:", dietContext);
+    } catch (e) {}
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "nvidia/nemotron-nano-12b-v2-vl:free",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mediaType};base64,${base64Image}`
-                }
-              },
-              {
-                type: "text",
-                text: `You are a professional nutritionist AI. ${dietContext}Analyze the food in this image and return ONLY valid JSON, no markdown, no explanation. ${dietContext ? 'In the tips field, provide personalized advice based on the user dietary preferences mentioned above.' : ''}
+    const prompt = `You are a professional nutritionist AI. ${dietContext}Analyze the food in this image and return ONLY valid JSON, no markdown, no explanation.
 
 {
   "foodName": "Name of the food",
@@ -316,18 +292,31 @@ app.post("/api/analyze", upload.single("image"), async (req, res) => {
   "allergens": ["gluten", "dairy"]
 }
 
-Return ONLY the JSON. No markdown.`
-              }
+Return ONLY the JSON. No markdown.`;
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:${mediaType};base64,${base64Image}` } }
             ]
           }
-        ]
+        ],
+        max_tokens: 1024
       })
     });
 
     const json = await response.json();
-    if (!response.ok) {
-      throw new Error(json.error?.message || "OpenRouter API error");
-    }
+    if (!response.ok) throw new Error(JSON.stringify(json.error));
 
     const rawText = json.choices[0].message.content.trim();
     let data;
